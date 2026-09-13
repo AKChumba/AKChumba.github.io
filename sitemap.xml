@@ -1,127 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://akchumba.github.io/</loc>
+    <loc>https://alvanchumba.me/</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/bricks.html</loc>
+    <loc>https://alvanchumba.me/writeups/bricks.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/case-b4dm755.html</loc>
+    <loc>https://alvanchumba.me/writeups/case-b4dm755.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/directory.html</loc>
+    <loc>https://alvanchumba.me/writeups/directory.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/event-horizon.html</loc>
+    <loc>https://alvanchumba.me/writeups/event-horizon.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/hades.html</loc>
+    <loc>https://alvanchumba.me/writeups/hades.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/ice.html</loc>
+    <loc>https://alvanchumba.me/writeups/ice.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/lfi-directory-traversal.html</loc>
+    <loc>https://alvanchumba.me/writeups/lfi-directory-traversal.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/logic-flaws.html</loc>
+    <loc>https://alvanchumba.me/writeups/logic-flaws.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/mayhem.html</loc>
+    <loc>https://alvanchumba.me/writeups/mayhem.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/moebius.html</loc>
+    <loc>https://alvanchumba.me/writeups/moebius.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/nustctf-2026.html</loc>
+    <loc>https://alvanchumba.me/writeups/nustctf-2026.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/operation-endgames.html</loc>
+    <loc>https://alvanchumba.me/writeups/operation-endgames.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/rainbow.html</loc>
+    <loc>https://alvanchumba.me/writeups/rainbow.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/retro.html</loc>
+    <loc>https://alvanchumba.me/writeups/retro.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/server-from-hell.html</loc>
+    <loc>https://alvanchumba.me/writeups/server-from-hell.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/smol.html</loc>
+    <loc>https://alvanchumba.me/writeups/smol.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/soupedecode01.html</loc>
+    <loc>https://alvanchumba.me/writeups/soupedecode01.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/sql-injection.html</loc>
+    <loc>https://alvanchumba.me/writeups/sql-injection.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/whyhackme.html</loc>
+    <loc>https://alvanchumba.me/writeups/whyhackme.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://akchumba.github.io/writeups/willow.html</loc>
+    <loc>https://alvanchumba.me/writeups/willow.html</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
