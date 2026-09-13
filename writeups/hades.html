@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hades &mdash; Breach Reconstruction Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/terminal-theme.css">
+<style>
+  .shot{ margin:1.2rem 0 1.6rem; }
+  .shot img{ max-width:100%; border:1px solid var(--border-dim); border-radius:4px; display:block; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin-top:1rem; }
+  .badge-row span{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--green-dim); border:1px solid var(--border); padding:.25rem .6rem; border-radius:20px; }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <a href="../index.html" style="border:none;color:var(--green-dim);flex-shrink:0;">&larr; ./home</a>
+    <div class="term-path">root@hades:~/ecsc#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> SESSION ACTIVE</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">ecsc ctf log</p>
+    <div class="hero-frame">
+      <h1>HADES<small>ECSC · pwn</small></h1>
+    </div>
+    <div class="hero-meta">
+      <span>EVENT <b>ECSC</b></span>
+      <span>CATEGORY <b>Pwn</b></span>
+      <span>RESULT <b>FLAG CAPTURED</b></span>
+    </div>
+    <div class="badge-row"><span>ecsc</span> <span>pwn</span> <span>exploit</span></div>
+    <a class="scroll-cue" href="#flags">&#9660; scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#flags">flags.txt</a></li>
+        <li><a href="#f0">01_session.log</a></li>
+        <li><a href="#f1">02_exploit.py</a></li>
+        <li><a href="#f2">03_exploit_alt.py</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      
+      <section id="flags" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat flags.txt</span></div>
+        <h2>flag captured</h2>
+        <div class="flag-block"><div class="label">flag</div><code>ZeroDays{8189a1ddc6e70ef1bb2c2346b628c7d9}</code></div>
+      </section>
+      
+      <section id="f0" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 01_session.log</span></div>
+        <h2>exploit session</h2>
+        <pre><code>                                                                                                                    
+┌──(myenv)─(alvan㉿vbox)-[~/Downloads/escs]
+└─$ python exploit.py       
+[+] Opening connection to 34.244.222.63 on port 13301: Done
+Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+&gt; Soul vanquished.
+
+&gt; Soul vanquished.
+Soul vanquished.
+Soul vanquished.
+
+
+|\ | \ / \_/ 
+| \|  |  / \ 
+
+
+/   Wonderful work.
+|   
+|   I knew you could do it. Here, have this. You Father wanted you
+\   to have it once you're ready.
+
+b'ZeroDays{8189a1ddc6e70ef1bb2c2346b628c7d9}'
+[*] Closed connection to 34.244.222.63 port 13301</code></pre>
+
+      </section>
+      <section id="f1" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 02_exploit.py</span></div>
+        <h2>exploit script</h2>
+        <pre><code>from Crypto.Cipher import AES
+from os import urandom
+import random
+import binascii
+
+flag = open("flag.txt", "rb").read()
+
+class NextGenPRF:
+    def __init__(self, option):
+        self.key = urandom(16)
+        # 1 = pseudorandom, 0 = true random
+        self.option = option
+    
+    def pseudorandom(self, msg: bytes): # pseudorandom function
+        cipher = AES.new(msg, AES.MODE_ECB)
+        random_string = random.randbytes(16)
+        ciphertext = cipher.encrypt(random_string) + cipher.decrypt(random_string)
+        return ciphertext
+    
+    def true_random(self, msg):
+        random_string = random.randbytes(32)
+        return bytes(rs ^ m for rs, m in zip(random_string, msg))
+    
+    def oracle(self, msg):
+        if (len(msg) != 32):
+            return None
+        if (self.option == 0):
+            return self.true_random(msg)
+        else:
+            return self.pseudorandom(msg)
+    
+    def guess(self, mode_guess):
+        return (self.option == mode_guess)
+
+
+def judgement(questions_left, left_soul, right_soul):
+    while True:
+        if (questions_left == 0):
+            break
+        print("State your question for the souls: ", end="")
+        hex_message = input()
+        try:
+            message = binascii.unhexlify(hex_message)
+        except binascii.Error:
+            continue
+        if (len(message) != 32):
+            continue
+        left_response = binascii.hexlify(left_soul.oracle(message)).decode("utf-8")
+        right_response = binascii.hexlify(right_soul.oracle(message)).decode("utf-8")
+        print(f"The left soul screams: {left_response}")
+        print(f"The right soul screams: {right_response}")
+        return (questions_left - 1)
+
+BANNER = """
+   ___   _   __  __ ___             
+  / __| /_\ |  \/  | __|            
+ | (_ |/ _ \| |\/| | _|             
+  \___/_/_\_\_|  |_|___|            
+  / _ \| __|                        
+ | (_) | _|                         
+  \___/|_|   ___  ___ ___  
+ | || | /_\ |   \| __/ __| 
+ | __ |/ _ \| |) | _|\__ \ 
+ |_||_/_/ \_\___/|___|___/ 
+                                                              
+\n\n\n
+"""
+NYX_HEADER = """
+|\ | \ / \_/ 
+| \|  |  / \ 
+"""
+INTRO_TEXT = """
+/   Melinoë, dear, I have heard of your issues with Chronos,
+|   You know your Father cannot stomach such, and your Mother, why, she
+|   worries about you. Your quest is mighty, but it may prove your last.
+|   To prepare you against Chronos' illusions, your Father devised a
+|   great test. Tell apart the souls, strike true, and you will be 
+\   ready for all that is to come.
+"""
+FAIL = """
+...the light fades. Back to the forest you go.
+"""
+SUCCESS = """
+Soul vanquished.
+"""
+WIN_TEXT = """
+/   Wonderful work.
+|   
+|   I knew you could do it. Here, have this. You Father wanted you
+\   to have it once you're ready.
+"""
+def main():
+    souls = 50
+    questions = 50
+    print(BANNER)
+    print(NYX_HEADER)
+    print(INTRO_TEXT)
+    while (souls &gt; 0):
+        truth = random.getrandbits(1) # 0 is left, 1 is right
+        if (truth == 0):
+            left = NextGenPRF(0) # true random
+            right = NextGenPRF(1) # pseudorandom
+        else:
+            left = NextGenPRF(1) # pseudorandom
+            right = NextGenPRF(0) # true random
+        
+        while True:
+            print("&gt; ", end="")
+            decision = input()
+            match decision:
+                case "1": # left door
+                    if (left.guess(0)):
+                        print(SUCCESS)
+                        souls -= 1
+                        break
+                    else:
+                        print(FAIL)
+                        return
+                case "2": # right door
+                    if (right.guess(0)):
+                        print(SUCCESS)
+                        souls -= 1
+                        break
+                    else:
+                        print(FAIL)
+                        return
+                case "3":
+                    if questions == 0:
+                        print(FAIL)
+                        return
+                    questions = judgement(questions, left, right)
+    
+    print(NYX_HEADER)
+    print(WIN_TEXT)
+    print(flag)
+
+if (__name__ == "__main__"):
+    main()</code></pre>
+
+      </section>
+      <section id="f2" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 03_exploit_alt.py</span></div>
+        <h2>exploit script (variant)</h2>
+        <pre><code>#!/usr/bin/env python3
+from pwn import remote
+from Crypto.Cipher import AES
+import os, binascii, sys
+
+HOST = "34.244.222.63"
+PORT = 13301
+
+def is_pseudorandom(resp_bytes, key):
+    # resp_bytes length must be 32
+    a = resp_bytes[:16]
+    b = resp_bytes[16:32]
+    aes = AES.new(key, AES.MODE_ECB)
+    try:
+        x = aes.decrypt(a)
+        y = aes.encrypt(b)
+        return x == y
+    except Exception:
+        return False
+
+def play_once(r):
+    # choose to ask a question
+    r.sendline(b"3")
+    # pick any 32-byte message (we'll use random)
+    msg = os.urandom(32)
+    hexmsg = binascii.hexlify(msg)
+    r.recvuntil(b"State your question for the souls:")
+    r.sendline(hexmsg)
+    # parse the two responses
+    r.recvuntil(b"The left soul screams: ")
+    left_hex = r.recvline().strip()
+    r.recvuntil(b"The right soul screams: ")
+    right_hex = r.recvline().strip()
+
+    left_bytes = binascii.unhexlify(left_hex)
+    right_bytes = binascii.unhexlify(right_hex)
+
+    left_is_pseudo = is_pseudorandom(left_bytes, msg)
+    right_is_pseudo = is_pseudorandom(right_bytes, msg)
+
+    # sanity:
+    if left_is_pseudo == right_is_pseudo:
+        # both same -&gt; something unexpected; fail-safe: guess left false (shouldn't happen)
+        choice = b"1"
+    else:
+        # true random is the one that is NOT pseudorandom
+        if not left_is_pseudo:
+            choice = b"1"
+        else:
+            choice = b"2"
+
+    r.recvuntil(b"&gt; ")
+    r.sendline(choice)
+    # Read the immediate reply (SUCCESS or FAIL)
+    out = r.recvline(timeout=2)
+    return out
+
+def main():
+    r = remote(HOST, PORT)
+    # read banner and intro until first prompt
+    r.recvuntil(b"&gt; ")
+
+    # The server gives you 50 souls to clear; loop until we get the flag or connection closes
+    while True:
+        # we will prefer to ask question each round and then choose.
+        try:
+            result = play_once(r)
+        except Exception as e:
+            print("Exception:", e)
+            break
+
+        if result is None:
+            # maybe the server printed multiple lines; try to read more
+            try:
+                data = r.recv(timeout=1)
+                print(data.decode(errors='ignore'))
+            except:
+                pass
+
+        # If we reduced souls to 0 the server prints flag after the loop — read until EOF/flag
+        # Look ahead for either fail, success, or final flag marker
+        data = r.recv(timeout=1)
+        if data:
+            s = data.decode(errors='ignore')
+            print(s, end="")
+            # crude check for flag (adjust if flag format differs)
+            if "flag" in s.lower() or "{" in s:
+                # print remaining
+                try:
+                    rest = r.recv(timeout=2)
+                    print(rest.decode(errors='ignore'))
+                except:
+                    pass
+                break
+
+    r.close()
+
+if __name__ == "__main__":
+    main()</code></pre>
+
+      </section>
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cursor">&#9612;</span></div>
+    <p>Raw session log, lightly reformatted for the theme. Nothing paraphrased or added beyond what's in the original notes.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

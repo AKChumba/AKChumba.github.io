@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rainbow &mdash; Breach Reconstruction Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/terminal-theme.css">
+<style>
+  .shot{ margin:1.2rem 0 1.6rem; }
+  .shot img{ max-width:100%; border:1px solid var(--border-dim); border-radius:4px; display:block; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin-top:1rem; }
+  .badge-row span{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--green-dim); border:1px solid var(--border); padding:.25rem .6rem; border-radius:20px; }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <a href="../index.html" style="border:none;color:var(--green-dim);flex-shrink:0;">&larr; ./home</a>
+    <div class="term-path">root@rainbow:~/htb#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> SESSION ACTIVE</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">htb log</p>
+    <div class="hero-frame">
+      <h1>RAINBOW<small>Hack The Box</small></h1>
+    </div>
+    <div class="hero-meta">
+      <span>PLATFORM <b>Hack The Box</b></span>
+      <span>MACHINE <b>Rainbow</b></span>
+    </div>
+    <div class="badge-row"><span>htb</span> <span>ftp</span></div>
+    <a class="scroll-cue" href="#f0">&#9660; scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#f0">01_session.log</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      
+      
+      <section id="f0" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 01_session.log</span></div>
+        <h2>session log</h2>
+        <pre><code>                                                                                                                    
+┌──(alvan㉿vbox)-[~/htb/rainbow]
+└─$ ftp 10.129.234.171      
+Connected to 10.129.234.171.
+220 Microsoft FTP Service
+Name (10.129.234.171:alvan): 
+331 Password required
+Password: 
+530 User cannot log in.
+ftp: Login failed
+ftp&gt; quit
+221 Goodbye.
+                                                                                                                    
+┌──(alvan㉿vbox)-[~/htb/rainbow]
+└─$ ftp 10.129.234.171
+Connected to 10.129.234.171.
+220 Microsoft FTP Service
+Name (10.129.234.171:alvan): anonymous
+331 Anonymous access allowed, send identity (e-mail name) as password.
+Password: 
+230 User logged in.
+Remote system type is Windows_NT.
+ftp&gt; ls
+229 Entering Extended Passive Mode (|||50100|)
+125 Data connection already open; Transfer starting.
+01-18-22  08:22AM                  258 dev.txt
+01-18-22  08:30AM                54784 rainbow.exe
+01-16-22  01:34PM                  479 restart.ps1
+01-16-22  12:14PM       &lt;DIR&gt;          wwwroot
+226 Transfer complete.
+ftp&gt; get dev.txt
+local: dev.txt remote: dev.txt
+229 Entering Extended Passive Mode (|||50101|)
+125 Data connection already open; Transfer starting.
+100% |***********************************************************************|   258        0.96 KiB/s    00:00 ETA
+226 Transfer complete.
+WARNING! 5 bare linefeeds received in ASCII mode.
+File may not have transferred correctly.
+258 bytes received in 00:00 (0.96 KiB/s)
+ftp&gt; get rainbow.exe
+local: rainbow.exe remote: rainbow.exe
+229 Entering Extended Passive Mode (|||50102|)
+125 Data connection already open; Transfer starting.
+100% |***********************************************************************| 54784       68.21 KiB/s    00:00 ETA
+226 Transfer complete.
+WARNING! 78 bare linefeeds received in ASCII mode.
+File may not have transferred correctly.
+54784 bytes received in 00:00 (68.18 KiB/s)
+ftp&gt; get restart.ps1
+local: restart.ps1 remote: restart.ps1
+229 Entering Extended Passive Mode (|||50103|)
+125 Data connection already open; Transfer starting.
+100% |***********************************************************************|   479        1.92 KiB/s    00:00 ETA
+226 Transfer complete.
+479 bytes received in 00:00 (1.91 KiB/s)
+ftp&gt; cd wwwroot
+250 CWD command successful.
+ftp&gt; ls
+229 Entering Extended Passive Mode (|||50104|)
+125 Data connection already open; Transfer starting.
+01-16-22  11:48AM                 1523 index.html
+226 Transfer complete.
+ftp&gt; get index.html
+local: index.html remote: index.html
+229 Entering Extended Passive Mode (|||50105|)
+125 Data connection already open; Transfer starting.
+100% |***********************************************************************|  1523        5.93 KiB/s    00:00 ETA
+226 Transfer complete.
+1523 bytes received in 00:00 (5.90 KiB/s)
+ftp&gt; ls -la
+229 Entering Extended Passive Mode (|||50106|)
+125 Data connection already open; Transfer starting.
+01-16-22  11:48AM                 1523 index.html
+226 Transfer complete.
+ftp&gt; cd ..
+250 CWD command successful.
+ftp&gt; pwd
+Remote directory: /
+ftp&gt; ls -la
+229 Entering Extended Passive Mode (|||50107|)
+125 Data connection already open; Transfer starting.
+01-18-22  08:22AM                  258 dev.txt
+01-18-22  08:30AM                54784 rainbow.exe
+01-16-22  01:34PM                  479 restart.ps1
+01-16-22  12:14PM       &lt;DIR&gt;          wwwroot
+226 Transfer complete.
+ftp&gt; quit
+221 Goodbye.
+                                                                                                                    
+┌──(alvan㉿vbox)-[~/htb/rainbow]
+└─$ ls
+dev.txt  index.html  nmap_scan  rainbow.exe  restart.ps1
+                                                                                                                    
+┌──(alvan㉿vbox)-[~/htb/rainbow]
+└─$ cat dev.txt              
+* Our webserver has been crashing a lot lately. Instead of touching the code we added a restart script! 
+* The server will dynamically pick a port when its default port is unresponsive (8080-8090).
+* We'll fix this later by adding load balancer.
+
+- dev team
+                                                                                                                    
+┌──(alvan㉿vbox)-[~/htb/rainbow]
+└─$ cat restart.ps1
+Set-Location -Path c:\rainbow
+for(;;){
+try{
+If (!(Get-Process -Name rainbow -ErrorAction SilentlyContinue))
+{Invoke-Expression "C:\rainbow\rainbow.exe" }
+$proc = Get-Process -Name rainbow | Sort-Object -Property ProcessName -Unique -ErrorAction SilentlyContinue
+If (!$proc -or ($proc.Responding -eq $false) –or ($proc.WorkingSet -GT 200000*1024)) {
+$proc.Kill()
+Start-Sleep -s 10
+Invoke-Expression "C:\rainbow\rainbow.exe"}
+}
+catch    {    }
+Start-sleep -s 30
+}                                                                                                                    </code></pre>
+
+      </section>
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cursor">&#9612;</span></div>
+    <p>Raw session log, lightly reformatted for the theme. Nothing paraphrased or added beyond what's in the original notes.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

