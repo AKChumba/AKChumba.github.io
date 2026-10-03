@@ -183,6 +183,7 @@
   .post-excerpt{ margin:0 0 .6rem; color:var(--ink-soft); font-size:14px; line-height:1.6; }
   .post-meta{ display:flex; flex-wrap:wrap; gap:.9rem; font-size:12.5px; color:var(--ink-faint); margin-bottom:.55rem; }
   .post-meta span{ display:inline-flex; align-items:center; gap:.35em; }
+  .post-meta .status-live{ color:var(--amber); font-weight:600; }
   .post-tags{ display:flex; flex-wrap:wrap; gap:.4rem; }
   .post-tags a{
     font-size:11.5px; font-weight:600; color:var(--ink-soft); background:var(--bg-inset);
@@ -300,6 +301,24 @@
       <p class="lede">CTF and lab-box breakdowns, written up properly instead of left in scrollback.</p>
       <div class="wshell">
         <main>
+          <article class="post-row">
+            <div class="post-badge">AD</div>
+            <div class="post-main">
+              <h3><a href="writeups/nncsc-range.html">NNCSC Range: Pre-AD Recon Log</a></h3>
+              <p class="post-excerpt">An unauthenticated recon pass across four domain controllers in the NNCSC range: SMB null sessions that open but a RID brute that doesn't, Kerberos pre-auth username enumeration, a password-spray plan deliberately held back over lockout risk, an anonymous LDAP bind closed off mid-ADCS check, and a coercion-plus-relay path queued as the next move.</p>
+              <div class="post-meta">
+                <span><i class="fa-regular fa-calendar"></i> Oct 3, 2026</span>
+                <span class="status-live"><i class="fa-solid fa-circle-dot"></i> in progress</span>
+              </div>
+              <div class="post-tags">
+                <a href="#tags">active-directory</a>
+                <a href="#tags">enumeration</a>
+                <a href="#tags">kerberoasting</a>
+                <a href="#tags">ntlm-relay</a>
+              </div>
+            </div>
+          </article>
+
           <article class="post-row">
             <div class="post-badge">CTF</div>
             <div class="post-main">
@@ -631,6 +650,7 @@
               <a href="#">kerberoasting</a>
               <a href="#">bloodhound</a>
               <a href="#">pass-the-hash</a>
+              <a href="#">ntlm-relay</a>
               <a href="#">reverse-engineering</a>
               <a href="#">forensics</a>
               <a href="#">prompt-injection</a>
@@ -645,11 +665,11 @@
           <div class="widget">
             <h3>Recent</h3>
             <ul>
+              <li><a href="writeups/nncsc-range.html">NNCSC Range</a><span class="wdate">Oct 3, 2026 &middot; in progress</span></li>
               <li><a href="writeups/nustctf-2026.html">NustCTF 2026</a><span class="wdate">Sep 13, 2026</span></li>
               <li><a href="writeups/operation-endgames.html">Operation EndGames</a><span class="wdate">Jun 20, 2026</span></li>
               <li><a href="writeups/soupedecode01.html">SoupedeCode 01</a><span class="wdate">Aug 5, 2025</span></li>
               <li><a href="writeups/bricks.html">Bricks</a><span class="wdate">Aug 8, 2025</span></li>
-              <li><a href="writeups/server-from-hell.html">Server From Hell</a><span class="wdate">Sep 1, 2025</span></li>
             </ul>
           </div>
         </aside>
