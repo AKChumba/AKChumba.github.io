@@ -1,0 +1,546 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NNCSC AD Enumeration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  /* layout concept: same terminal-log format as the NustCTF writeup this mirrors —
+     sticky titlebar, left-rail section nav, cat-prompt blocks read top to bottom */
+  :root{
+    --bg:            #03100a;
+    --bg-terminal:   #061b11;
+    --bg-inset:      #07140d;
+    --bg-inset-2:    #0a1f14;
+    --border:        #134a2c;
+    --border-dim:    #0c2a1a;
+    --green:         #46ffa0;
+    --green-soft:    #9fe8bd;
+    --green-dim:     #3f7a5c;
+    --amber:         #ffb454;
+    --red:           #ff6b6b;
+    --white-ish:     #d9fbe8;
+    --glow: 0 0 6px rgba(70,255,160,.45);
+    --font-display: 'VT323', monospace;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation:none !important; transition:none !important;} }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--green-soft);
+    font-family:var(--font-mono);
+    font-size:15.5px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--green); color:#03100a; }
+
+  a{ color:var(--green); text-decoration:none; border-bottom:1px solid var(--border); }
+  a:hover{ color:var(--white-ish); border-color:var(--green); text-shadow:var(--glow); }
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--green); outline-offset:3px; }
+
+  .crt-overlay{
+    position:fixed; inset:0; pointer-events:none; z-index:80;
+    background:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(70,255,160,.022) 3px, rgba(70,255,160,.022) 4px),
+      radial-gradient(ellipse at 50% 0%, rgba(70,255,160,.05), transparent 60%);
+    mix-blend-mode:overlay;
+  }
+  .flicker{ animation:flicker 9s infinite; }
+  @keyframes flicker{
+    0%,93%,100%{ filter:brightness(1); }
+    94%{ filter:brightness(1.03); }
+    95%{ filter:brightness(.985); }
+    96%{ filter:brightness(1.015); }
+  }
+
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  .terminal-shell{ max-width:1180px; margin:0 auto; padding:0 0 6rem; }
+
+  .term-titlebar{
+    position:sticky; top:env(safe-area-inset-top, 0px); z-index:60;
+    display:flex; align-items:center; gap:.9rem;
+    padding:.65rem 1.25rem;
+    background:rgba(6,27,17,.92);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(6px);
+    font-size:13px;
+  }
+  .term-titlebar .dots{ display:flex; gap:6px; flex-shrink:0;}
+  .term-titlebar .dots span{ width:11px; height:11px; border-radius:50%; display:block; background:var(--border-dim); border:1px solid var(--border);}
+  .term-path{ color:var(--green-dim); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .term-status{ display:flex; align-items:center; gap:.45rem; color:var(--green-dim); flex-shrink:0; }
+  .dot-live{ width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 6px rgba(255,180,84,.5); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .hero{
+    padding:5.5rem 1.5rem 4rem;
+    text-align:center;
+    border-bottom:1px solid var(--border-dim);
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(70,255,160,.08), transparent 70%);
+  }
+  .hero-eyebrow{
+    font-size:12.5px; letter-spacing:.35em; text-transform:uppercase;
+    color:var(--green-dim); margin:0 0 1.6rem;
+  }
+  .hero-eyebrow::before{ content:"[ "; } .hero-eyebrow::after{ content:" ]"; }
+
+  .hero-frame{
+    display:inline-block; position:relative; padding:1.6rem 2.4rem;
+  }
+  .hero-frame::before, .hero-frame::after{
+    content:""; position:absolute; width:22px; height:22px; border:2px solid var(--green); opacity:.6;
+  }
+  .hero-frame::before{ top:0; left:0; border-right:none; border-bottom:none; }
+  .hero-frame::after{ bottom:0; right:0; border-left:none; border-top:none; }
+
+  .hero h1{
+    font-family:var(--font-display);
+    font-size:clamp(2.2rem, 7vw, 4.6rem);
+    line-height:.95;
+    letter-spacing:.04em;
+    margin:0;
+    color:var(--green);
+    text-shadow:0 0 18px rgba(70,255,160,.5), 0 0 2px rgba(70,255,160,.8);
+  }
+  .hero h1 small{ display:block; font-size:.32em; letter-spacing:.3em; color:var(--white-ish); text-shadow:none; margin-top:.3em; }
+
+  .hero-typed{
+    margin:1.9rem auto 0; max-width:50em;
+    color:var(--green-soft); font-size:1.02rem; min-height:1.6em;
+  }
+  .cursor{ display:inline-block; width:.55em; background:var(--green); margin-left:2px; box-shadow:var(--glow); animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .hero-meta{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem 1rem;
+    margin-top:2.2rem; font-size:12.5px; color:var(--green-dim);
+  }
+  .hero-meta span{ border:1px solid var(--border); padding:.3rem .7rem; border-radius:2px; background:var(--bg-inset); }
+  .hero-meta span b{ color:var(--green-soft); font-weight:600; }
+
+  .scroll-cue{ display:inline-block; margin-top:2.6rem; font-size:12px; color:var(--green-dim); border:none; }
+  .scroll-cue:hover{ color:var(--green); border:none; }
+
+  .layout{ display:grid; grid-template-columns:230px 1fr; gap:0; align-items:start; }
+
+  .sidenav{
+    position:sticky; top:52px; align-self:start;
+    padding:2.4rem 1.2rem 2rem 1.5rem;
+    border-right:1px solid var(--border-dim);
+    height:calc(100vh - 52px); overflow-y:auto;
+  }
+  .nav-prompt{ color:var(--green-dim); font-size:12px; margin-bottom:1rem; white-space:pre-line; }
+  .sidenav ul{ list-style:none; margin:0; padding:0; }
+  .sidenav li{ margin:0; }
+  .sidenav a{
+    display:block; padding:.32rem 0; border:none; font-size:13px;
+    color:var(--green-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    border-left:2px solid transparent; padding-left:.7rem; margin-left:-.7rem;
+  }
+  .sidenav a:before{ content:"· "; }
+  .sidenav a:hover{ color:var(--green); border-color:var(--border); }
+  .sidenav a.active{ color:var(--green); border-left-color:var(--green); text-shadow:var(--glow); }
+
+  .content{ padding:3rem clamp(1.25rem, 4vw, 3.5rem) 0; min-width:0; }
+
+  .block{ margin-bottom:4rem; scroll-margin-top:70px; min-width:0; }
+  .prompt-header{
+    font-size:13px; color:var(--green-dim); margin-bottom:1.1rem; white-space:pre-line;
+  }
+  .prompt-header .cmd{ color:var(--white-ish); }
+
+  .block h2{
+    font-family:var(--font-display); font-weight:400; letter-spacing:.02em;
+    font-size:2rem; margin:0 0 1.1rem; color:var(--white-ish);
+    display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap;
+  }
+  .block h2 .act{ color:var(--green); font-size:.55em; letter-spacing:.18em; }
+  .block h2 .cat{ font-size:.5em; color:var(--green-dim); border:1px solid var(--border); padding:.2em .6em; border-radius:3px; letter-spacing:.1em; text-transform:uppercase; }
+
+  .block-body p{ margin:0 0 1.1rem; color:var(--green-soft); }
+  .block-body p:last-child{ margin-bottom:0; }
+  .block-body strong{ color:var(--white-ish); font-weight:600; }
+  .block-body code{ background:var(--bg-inset-2); color:var(--amber); padding:.1em .35em; border-radius:3px; font-size:.92em; }
+
+  pre{
+    margin:1rem 0 1.4rem; padding:1rem 1.15rem; overflow-x:auto;
+    background:var(--bg-inset); border:1px solid var(--border-dim); border-left:3px solid var(--border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--green-soft);
+  }
+  pre.cmd{ border-left-color:var(--green); }
+  pre code{ background:none; padding:0; color:inherit; }
+  .ok{ color:var(--green); text-shadow:var(--glow); }
+  .fail{ color:var(--red); }
+  .warn{ color:var(--amber); }
+  .dim{ color:var(--green-dim); }
+
+  .table-wrap{ overflow-x:auto; margin:1.2rem 0 1.6rem; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:560px; }
+  th,td{ text-align:left; padding:.5rem .8rem; border:1px solid var(--border-dim); }
+  th{ color:var(--green); font-weight:600; background:var(--bg-inset); white-space:nowrap; }
+
+  .callout{
+    border:1px solid var(--border); border-left:3px solid var(--amber);
+    background:var(--bg-inset); padding:.9rem 1.1rem; margin:1rem 0 1.6rem; border-radius:4px;
+  }
+  .callout p{ margin:0; }
+  .callout .label{ color:var(--amber); font-weight:600; }
+  .callout.danger{ border-left-color:var(--red); }
+  .callout.danger .label{ color:var(--red); }
+  .callout.ok{ border-left-color:var(--green); }
+  .callout.ok .label{ color:var(--green); }
+
+  .finding-block{
+    margin:1.4rem 0; padding:1.1rem 1.2rem;
+    border:1px solid var(--border); border-radius:6px; background:var(--bg-inset-2);
+  }
+  .finding-block.blocked{ border-color:var(--red); }
+  .finding-block.open{ border-color:var(--amber); }
+  .finding-block .label{ font-size:11px; letter-spacing:.25em; margin-bottom:.5rem; text-transform:uppercase; }
+  .finding-block.confirmed .label{ color:var(--green); }
+  .finding-block.blocked .label{ color:var(--red); }
+  .finding-block.open .label{ color:var(--amber); }
+  .finding-block code{ font-size:.95rem; background:none; padding:0; word-break:break-all; color:var(--white-ish); }
+
+  .status-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.6rem; margin:1.2rem 0 1.6rem; }
+  .status-chip{ border:1px solid var(--border-dim); border-radius:4px; padding:.55rem .7rem; font-size:12px; background:var(--bg-inset); }
+  .status-chip.done{ border-color:var(--green); }
+  .status-chip.done .pts{ color:var(--green); }
+  .status-chip.blocked{ border-color:var(--red); }
+  .status-chip.blocked .pts{ color:var(--red); }
+  .status-chip.open{ border-color:var(--amber); opacity:.9; }
+  .status-chip.open .pts{ color:var(--amber); }
+  .status-chip .name{ display:block; color:var(--white-ish); font-weight:600; margin-bottom:.2rem; }
+  .status-chip .pts{ font-size:11px; }
+
+  .arsenal pre{ font-size:13px; }
+  .arsenal .perm{ color:var(--green-dim); }
+  .arsenal .name{ color:var(--green); }
+  .arsenal .desc{ color:var(--green-soft); }
+
+  .takeaways ul{ list-style:none; margin:0; padding:0; }
+  .takeaways li{
+    padding:.9rem 1rem .9rem 2.3rem; margin-bottom:.8rem; position:relative;
+    border:1px solid var(--border-dim); border-left:3px solid var(--amber); border-radius:4px;
+    background:var(--bg-inset);
+  }
+  .takeaways li::before{ content:"[!]"; position:absolute; left:.8rem; color:var(--amber); font-weight:600; }
+  .takeaways strong{ color:var(--white-ish); }
+
+  .term-footer{
+    margin-top:1rem; padding:3rem clamp(1.25rem,4vw,3.5rem) calc(1rem + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--border-dim);
+  }
+  .term-footer p{ color:var(--green-dim); font-size:13px; }
+  .term-footer .prompt-header{ margin-bottom:.6rem; }
+
+  @media (max-width:900px){
+    .layout{ grid-template-columns:1fr; }
+    .sidenav{
+      position:static; height:auto; border-right:none; border-bottom:1px solid var(--border-dim);
+      padding:1rem 1.25rem;
+    }
+    .nav-prompt{ display:none; }
+    .sidenav ul{ display:flex; gap:1rem; overflow-x:auto; padding-bottom:.3rem; }
+    .sidenav a{ padding-left:0; margin-left:0; border-left:none; border-bottom:2px solid transparent; }
+    .sidenav a.active{ border-left:none; border-bottom-color:var(--green); }
+    .content{ padding-top:2rem; }
+  }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="term-path">operator@kali:~/Desktop/adenumeration#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> RECON IN PROGRESS</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">internal network assessment · engagement log</p>
+    <div class="hero-frame">
+      <h1>NNCSC RANGE<small>pre-AD enumeration</small></h1>
+    </div>
+    <p class="hero-typed" id="heroTyped" aria-live="polite"></p>
+    <div class="hero-meta">
+      <span>SCOPE <b>4 domain controllers, NNCSC forest</b></span>
+      <span>PHASE <b>unauthenticated recon</b></span>
+      <span>STATUS <b style="color:var(--amber)">in progress</b></span>
+      <span>NEXT <b>username enum → coercion / relay</b></span>
+    </div>
+    <a class="scroll-cue" href="#tldr">▼ scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#tldr">00_tldr.md</a></li>
+        <li><a href="#targets">00_targets.cfg</a></li>
+        <li><a href="#sweep">01_recon_sweep.sh</a></li>
+        <li><a href="#smb">02_smb_null_session.sh</a></li>
+        <li><a href="#kerb">03_kerb_enum.sh</a></li>
+        <li><a href="#spray">04_password_spray.sh</a></li>
+        <li><a href="#adcs">05_adcs_ldap_check.sh</a></li>
+        <li><a href="#coercion">06_coercion_plan.md</a></li>
+        <li><a href="#board">status.txt</a></li>
+        <li><a href="#arsenal">arsenal/</a></li>
+        <li><a href="#takeaways">takeaways.md</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <section id="tldr" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 00_tldr.md</span></div>
+        <h2><span class="act">// 00</span>tl;dr</h2>
+        <div class="block-body">
+          <p>Before touching anything Active-Directory-specific, the first pass across the <strong>NNCSC</strong> range was plain unauthenticated reconnaissance against four domain controllers (<code>tm03</code>, <code>tm04</code>, <code>tm06</code>, <code>tm08</code>) — all Windows 11 / Server 2025 Build 26100 x64, all presenting the same NetBIOS name <code>NNCSC</code> but each its own forest with a distinct domain SID.</p>
+          <p>Results so far: anonymous SMB sessions are allowed on at least one DC, but anonymous RID brute-forcing and anonymous LDAP binds are both closed off — <code>STATUS_ACCESS_DENIED</code> on the LSA open, and a reset connection the moment certipy tries to query ADCS over LDAP. SMB signing is enabled and required everywhere, which rules out a straightforward SMB relay. Kerberos username enumeration via <code>kerbrute</code> is running now to get a foothold username list; a coercion-plus-relay path (PetitPotam/PrinterBug → LDAP or ADCS) is queued as the next real lead once a viable relay target is confirmed.</p>
+        </div>
+      </section>
+
+      <section id="targets" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 00_targets.cfg</span></div>
+        <h2><span class="act">// 00</span>target inventory</h2>
+        <div class="table-wrap">
+        <table>
+          <tr><th>domain fqdn</th><th>netbios</th><th>hostname</th><th>ip</th><th>domain sid</th></tr>
+          <tr><td>nncsc.tm03.local</td><td>NNCSC</td><td>TM03-AD01</td><td>192.168.103.10</td><td class="dim">S-1-5-21-93128670-1895584093-491731091</td></tr>
+          <tr><td>nncsc.tm04.local</td><td>NNCSC</td><td>TM04-AD01</td><td>192.168.104.10</td><td class="dim">S-1-5-21-2142577963-2004663638-1031881382</td></tr>
+          <tr><td>nncsc.tm06.local</td><td>NNCSC</td><td>TM06-AD01</td><td>192.168.106.10</td><td class="dim">S-1-5-21-1315439458-301172041-357350462</td></tr>
+          <tr><td>nncsc.tm08.local</td><td>NNCSC</td><td>DCLAB-01</td><td>192.168.108.10</td><td class="dim warn">not yet pulled</td></tr>
+        </table>
+        </div>
+        <div class="callout">
+          <p><span class="label">[!] note</span> — .104.10 and .105.10 both timed out under <code>smbclient -L</code> on one pass while answering fine under <code>nxc</code> on another. Treat that as transient/filtered, not confirmed-down, and re-check before writing either host off.</p>
+        </div>
+      </section>
+
+      <section id="sweep" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 01_recon_sweep.sh</span></div>
+        <h2><span class="act">// 01</span>service sweep <span class="cat">recon</span></h2>
+        <div class="block-body"><p>An <code>nmap</code> service scan against .103.10 lays out the full AD stack in one pass:</p></div>
+        <pre class="cmd"><code>$ nmap -sV -sC -p88,135,139,389,445 192.168.103.10</code></pre>
+        <pre><code>88/tcp  open  kerberos-sec  Microsoft Windows Kerberos (server time: 2026-10-03 14:19:20Z)
+135/tcp open  msrpc         Microsoft Windows RPC
+139/tcp open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp open  ldap          Microsoft Windows Active Directory LDAP (Domain: nncsc.tm03.local)
+445/tcp open  microsoft-ds?
+Service Info: Host: TM03-AD01; OS: Windows
+
+smb2-security-mode:
+  3.1.1:
+    Message signing enabled and required
+clock-skew: 5m35s</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">confirmed</div>
+          <code>SMB signing enabled + required on every DC checked → no bare NTLM relay onto SMB</code>
+        </div>
+        <div class="callout">
+          <p><span class="label">[!] watch</span> — 5m35s clock skew is close to the ~5-minute window Kerberos tolerates by default. If ticket requests start failing with clock-skew errors later, this is the first thing to check.</p>
+        </div>
+      </section>
+
+      <section id="smb" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 02_smb_null_session.sh</span></div>
+        <h2><span class="act">// 02</span>null session + RID brute <span class="cat">recon</span></h2>
+        <div class="block-body"><p>Anonymous SMB sessions are accepted on all three checked DCs:</p></div>
+        <pre class="cmd"><code>$ smbclient -L //192.168.103.10 -N</code></pre>
+        <pre><code><span class="ok">Anonymous login successful</span>
+        Sharename       Type      Comment
+        ---------       ----      -------   <span class="dim">← empty — no shares exposed to null session</span></code></pre>
+        <div class="block-body"><p>enum4linux-ng confirms the same on .103/.104/.106: domain SID resolves fine over the anonymous pipe, but the follow-on RID brute dies at the LSA open on every single host:</p></div>
+        <pre><code>[+] nncsc.tm03.local\:
+[-] Error connecting: LSAD SessionError: code: 0xc0000022 - <span class="fail">STATUS_ACCESS_DENIED</span></code></pre>
+        <div class="finding-block blocked">
+          <div class="label">blocked</div>
+          <code>Anonymous RID cycling closed on all three DCs — null session opens, but LSA policy query is denied</code>
+        </div>
+        <div class="block-body"><p>Forcing SMB1 to fall back to legacy workgroup listing also fails cleanly — SMB1 is off, consistent with the <code>SMBv1:False</code> flag nxc reports on every host:</p></div>
+        <pre><code>Reconnecting with SMB1 for workgroup listing.
+do_connect: Connection to 192.168.103.10 failed (Error <span class="fail">NT_STATUS_RESOURCE_NAME_NOT_FOUND</span>)</code></pre>
+      </section>
+
+      <section id="kerb" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 03_kerb_enum.sh</span></div>
+        <h2><span class="act">// 03</span>Kerberos username enumeration <span class="cat">recon</span></h2>
+        <div class="block-body"><p>With RID brute closed, Kerberos pre-auth enumeration is the remaining path to a username list without touching a lockout counter. <code>kerbrute</code> confirmed the basic mechanic works — a single test name validated against <code>tm03</code>, case-insensitively, as expected:</p></div>
+        <pre class="cmd"><code>$ kerbrute userenum -d nncsc.tm03.local --dc 192.168.103.10 test_single_name.txt</code></pre>
+        <pre><code>[+] VALID USERNAME: administrator@nncsc.tm03.local
+[+] VALID USERNAME: Administrator@nncsc.tm03.local   <span class="dim">← case doesn't matter for the AS-REQ check</span></code></pre>
+        <div class="block-body"><p>The first full run pointed at the 10-million-entry <code>xato-net-10-million-usernames.txt</code> list, which is far too large for useful turnaround time. Swapped to a tighter, higher-signal approach instead: a small curated list of common AD/CTF-style service-account names run in parallel across all three domains, with a names-only wordlist queued behind it as the broader net:</p></div>
+        <pre class="cmd"><code>$ kerbrute userenum -d nncsc.tm03.local --dc 192.168.103.10 ad_common.txt -t 20
+$ kerbrute userenum -d nncsc.tm04.local --dc 192.168.104.10 ad_common.txt -t 20 &
+$ kerbrute userenum -d nncsc.tm06.local --dc 192.168.106.10 ad_common.txt -t 20 &</code></pre>
+        <div class="finding-block open">
+          <div class="label">open — in progress</div>
+          <code>Running now. Once a valid username list lands: try AS-REP roasting (impacket-GetNPUsers) for accounts with pre-auth disabled before any password spray.</code>
+        </div>
+      </section>
+
+      <section id="spray" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 04_password_spray.sh</span></div>
+        <h2><span class="act">// 04</span>password spray attempt <span class="cat">recon</span></h2>
+        <div class="block-body"><p>An early <code>nxc</code> run against a single known account name with <code>rockyou.txt</code> failed before it even started — the wordlist has non-UTF-8 bytes nxc's password-file reader won't tolerate:</p></div>
+        <pre class="cmd"><code>$ nxc smb 192.168.103.10 -u Administrator -p /usr/share/wordlists/rockyou.txt</code></pre>
+        <pre><code><span class="fail">ERROR</span>    UnicodeDecodeError: Could not decode password file.
+        You can ignore non UTF-8 characters with the option '--ignore-pw-decoding'</code></pre>
+        <div class="callout danger">
+          <p><span class="label">[!] held off deliberately</span> — fixing the encoding error isn't the same as this being a good idea. Spraying all ~14M rockyou entries against one named account (<code>Administrator</code>) is a vertical brute-force against a single login and risks a lockout or a loud alert long before it finds anything. Parked this in favor of waiting on the username enumeration, then doing a horizontal spray — a short, low-and-slow list of likely passwords across <em>many</em> usernames — once a real username list exists.</p>
+        </div>
+      </section>
+
+      <section id="adcs" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 05_adcs_ldap_check.sh</span></div>
+        <h2><span class="act">// 05</span>ADCS / anonymous LDAP check <span class="cat">recon</span></h2>
+        <div class="block-body"><p>Checked whether AD CS (certificate services) enumeration was reachable anonymously, as a possible path toward relay or template abuse. First hurdle was tooling, not the target: <code>apt</code> tried to pull the old abandoned <code>python3-certipy</code> package on top of the actively-maintained <code>certipy-ad</code> fork already installed, and the two collide on the same file paths.</p></div>
+        <pre class="cmd"><code>$ sudo apt-get remove --purge python3-certipy -y
+$ sudo dpkg --configure -a && sudo apt-get install -f</code></pre>
+        <div class="block-body"><p>With that cleared, anonymous enumeration itself didn't go through. Passing an empty username/password got treated as "no credential supplied" rather than an actual anonymous bind, and switching to <code>-no-pass</code> with a placeholder identity surfaced the real signal — an SSL handshake getting reset outright:</p></div>
+        <pre class="cmd"><code>$ certipy-ad find -u 'anonymous@nncsc.tm03.local' -no-pass \
+    -dc-ip 192.168.103.10 -ns 192.168.103.10 -scheme ldap -vulnerable</code></pre>
+        <pre><code><span class="fail">[-] Got error: socket ssl wrapping error: [Errno 104] Connection reset by peer</span></code></pre>
+        <div class="finding-block blocked">
+          <div class="label">blocked</div>
+          <code>Anonymous LDAP bind appears closed on this DC — ADCS enumeration needs a real credential to proceed, not a tooling fix</code>
+        </div>
+      </section>
+
+      <section id="coercion" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat 06_coercion_plan.md</span></div>
+        <h2><span class="act">// 06</span>coercion + relay <span class="cat">plan</span></h2>
+        <div class="block-body"><p>Everything above points at the same fork in the road: no anonymous RID list, no anonymous LDAP, SMB signing closing off a plain relay. A coercion attack is still the live option — it doesn't need a valid credential, it just needs a relay target that isn't enforcing signing the way SMB is.</p></div>
+        <table>
+          <tr><th>candidate relay target</th><th>why it might work</th></tr>
+          <tr><td>LDAP / LDAPS on the same DC</td><td>LDAP signing + channel binding is frequently left unenforced even when SMB signing is locked down</td></tr>
+          <tr><td>AD CS web enrollment (ESC8)</td><td>HTTP enrollment endpoints don't carry SMB's signing requirement at all, if a CA host exists in scope</td></tr>
+          <tr><td>a different in-scope host</td><td>relay DC-to-member-server, if signing isn't required there</td></tr>
+        </table>
+        <div class="block-body"><p>Planned sequence once a relay target is confirmed: stand up <code>ntlmrelayx</code> pointed at that target, then trigger <code>PetitPotam</code> or <code>PrinterBug</code> against the DC to force its machine account to authenticate outward to the listener.</p></div>
+        <div class="finding-block open">
+          <div class="label">open — queued</div>
+          <code>Waiting on: ADCS presence check (certipy, blocked by the LDAP issue above) and an attack-box IP to point coercion at, before standing up the relay listener.</code>
+        </div>
+      </section>
+
+      <section id="board" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat status.txt</span></div>
+        <h2>status board</h2>
+        <div class="status-grid">
+          <div class="status-chip done"><span class="name">Service sweep</span><span class="pts">nmap · complete on .103</span></div>
+          <div class="status-chip done"><span class="name">Null session check</span><span class="pts">smb · allowed, no shares</span></div>
+          <div class="status-chip blocked"><span class="name">Anonymous RID brute</span><span class="pts">access denied, all DCs</span></div>
+          <div class="status-chip open"><span class="name">Kerberos user enum</span><span class="pts">kerbrute · running</span></div>
+          <div class="status-chip open"><span class="name">Password spray</span><span class="pts">parked pending usernames</span></div>
+          <div class="status-chip blocked"><span class="name">Anonymous LDAP / ADCS</span><span class="pts">bind reset</span></div>
+          <div class="status-chip open"><span class="name">Coercion + relay</span><span class="pts">planned, not yet fired</span></div>
+          <div class="status-chip open"><span class="name">tm08 / DCLAB-01</span><span class="pts">found, not yet enumerated</span></div>
+        </div>
+      </section>
+
+      <section id="arsenal" class="block arsenal">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">ls -la /opt/arsenal/</span></div>
+        <h2>tools used</h2>
+        <pre><code><span class="perm">-rwxr-xr-x</span>  <span class="name">nmap</span>                   <span class="desc">service/version scan, SMB signing + clock-skew scripts</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">smbclient</span>              <span class="desc">anonymous session + share listing</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">enum4linux-ng</span>          <span class="desc">domain SID pull, RID brute attempt</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">netexec (nxc)</span>         <span class="desc">SMB banner grab, credential/spray attempts</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">kerbrute</span>               <span class="desc">Kerberos pre-auth username enumeration</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">certipy-ad</span>             <span class="desc">ADCS enumeration over LDAP</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">impacket (planned)</span>    <span class="desc">GetNPUsers for AS-REP roasting once usernames land</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">PetitPotam / ntlmrelayx (planned)</span>  <span class="desc">coercion + NTLM relay to LDAP/ADCS</span></code></pre>
+      </section>
+
+      <section id="takeaways" class="block takeaways">
+        <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cmd">cat takeaways.md</span></div>
+        <h2>key takeaways so far</h2>
+        <ul>
+          <li><strong>A uniform OS build across DCs suggests a templated deployment.</strong> All four hosts are Windows 11 / Server 2025 Build 26100 x64 — worth assuming other hardening settings are identical too, so one DC's blocked path probably predicts the others.</li>
+          <li><strong>Null session access doesn't mean enumeration access.</strong> SMB anonymous login succeeding and the LSA RID brute being denied are two separate controls — don't assume one implies the other on the next target.</li>
+          <li><strong>SMB signing being required closes relay-to-SMB, not coercion itself.</strong> Coercion still works; the relay destination just has to move to LDAP, ADCS, or a less-hardened host.</li>
+          <li><strong>A tooling error isn't always the real blocker.</strong> The certipy package conflict looked like the obstacle; the actual one was anonymous LDAP being closed on the target, found only after the install was fixed.</li>
+          <li><strong>Horizontal beats vertical for spraying.</strong> One account against a huge wordlist risks lockout for little gain — many usernames against a handful of likely passwords is the lower-risk, higher-yield shape once a username list exists.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/adenumeration]
+└─$ <span class="cursor">▌</span></div>
+    <p>Log current as of the latest recon pass. Next update lands once the kerbrute runs resolve or the coercion attempt fires.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var el = document.getElementById('heroTyped');
+  var full = "Unauthenticated recon across four NNCSC domain controllers — what opened, what's closed, and what's queued before the first real AD attack.";
+  if (reduce){
+    el.textContent = full;
+  } else {
+    var i = 0;
+    el.innerHTML = '<span class="cursor">▌</span>';
+    function type(){
+      if (i <= full.length){
+        el.innerHTML = full.slice(0, i) + '<span class="cursor">▌</span>';
+        i++;
+        setTimeout(type, 18);
+      }
+    }
+    setTimeout(type, 500);
+  }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+
+</body></html>
