@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operation Sync_User — Web Foothold to Domain Admin</title>
+<meta name="description" content="An unauthenticated SSRF/LFI proxy chained through a GTFOBins root escalation, a leaked 'dummy' asset, an exposed file manager, and a misconfigured AD sync account with DCSync rights — ending in full domain compromise.">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Alvan Chumba">
+<link rel="canonical" href="https://alvanchumba.me/writeups/operation-syncuser.html">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="shadowalvan">
+<meta property="og:title" content="Operation Sync_User: Web Foothold to Domain Admin">
+<meta property="og:description" content="An unauthenticated SSRF/LFI proxy chained through a GTFOBins root escalation, a leaked 'dummy' asset, an exposed file manager, and a misconfigured AD sync account with DCSync rights — ending in full domain compromise.">
+<meta property="og:url" content="https://alvanchumba.me/writeups/operation-syncuser.html">
+<meta property="og:image" content="https://alvanchumba.me/assets/avatar.png">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Operation Sync_User: Web Foothold to Domain Admin">
+<meta name="twitter:description" content="An unauthenticated SSRF/LFI proxy chained through a GTFOBins root escalation, a leaked 'dummy' asset, an exposed file manager, and a misconfigured AD sync account with DCSync rights — ending in full domain compromise.">
+<meta name="twitter:image" content="https://alvanchumba.me/assets/avatar.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:            #03100a;
+    --bg-terminal:   #061b11;
+    --bg-inset:      #07140d;
+    --bg-inset-2:    #0a1f14;
+    --border:        #134a2c;
+    --border-dim:    #0c2a1a;
+    --green:         #46ffa0;
+    --green-soft:    #9fe8bd;
+    --green-dim:     #3f7a5c;
+    --amber:         #ffb454;
+    --red:           #ff6b6b;
+    --white-ish:     #d9fbe8;
+    --glow: 0 0 6px rgba(70,255,160,.45);
+    --font-display: 'VT323', monospace;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation:none !important; transition:none !important;} }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--green-soft);
+    font-family:var(--font-mono);
+    font-size:15.5px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--green); color:#03100a; }
+
+  a{ color:var(--green); text-decoration:none; border-bottom:1px solid var(--border); }
+  a:hover{ color:var(--white-ish); border-color:var(--green); text-shadow:var(--glow); }
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--green); outline-offset:3px; }
+
+  .crt-overlay{
+    position:fixed; inset:0; pointer-events:none; z-index:80;
+    background:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(70,255,160,.022) 3px, rgba(70,255,160,.022) 4px),
+      radial-gradient(ellipse at 50% 0%, rgba(70,255,160,.05), transparent 60%);
+    mix-blend-mode:overlay;
+  }
+  .flicker{ animation:flicker 9s infinite; }
+  @keyframes flicker{
+    0%,93%,100%{ filter:brightness(1); }
+    94%{ filter:brightness(1.03); }
+    95%{ filter:brightness(.985); }
+    96%{ filter:brightness(1.015); }
+  }
+
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  .terminal-shell{ max-width:1180px; margin:0 auto; padding:0 0 6rem; }
+
+  .term-titlebar{
+    position:sticky; top:0; z-index:60;
+    display:flex; align-items:center; gap:.9rem;
+    padding:.65rem 1.25rem;
+    background:rgba(6,27,17,.92);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(6px);
+    font-size:13px;
+  }
+  .term-titlebar .dots{ display:flex; gap:6px; flex-shrink:0;}
+  .term-titlebar .dots span{ width:11px; height:11px; border-radius:50%; display:block; background:var(--border-dim); border:1px solid var(--border);}
+  .term-path{ color:var(--green-dim); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .term-status{ display:flex; align-items:center; gap:.45rem; color:var(--green-dim); flex-shrink:0; }
+  .dot-live{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:var(--glow); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .hero{
+    padding:5.5rem 1.5rem 4rem;
+    text-align:center;
+    border-bottom:1px solid var(--border-dim);
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(70,255,160,.08), transparent 70%);
+  }
+  .hero-eyebrow{
+    font-size:12.5px; letter-spacing:.35em; text-transform:uppercase;
+    color:var(--green-dim); margin:0 0 1.6rem;
+  }
+  .hero-eyebrow::before{ content:"[ "; } .hero-eyebrow::after{ content:" ]"; }
+
+  .hero-frame{
+    display:inline-block; position:relative; padding:1.6rem 2.4rem;
+  }
+  .hero-frame::before, .hero-frame::after{
+    content:""; position:absolute; width:22px; height:22px; border:2px solid var(--green); opacity:.6;
+  }
+  .hero-frame::before{ top:0; left:0; border-right:none; border-bottom:none; }
+  .hero-frame::after{ bottom:0; right:0; border-left:none; border-top:none; }
+
+  .hero h1{
+    font-family:var(--font-display);
+    font-size:clamp(2.2rem, 7vw, 4.6rem);
+    line-height:.95;
+    letter-spacing:.04em;
+    margin:0;
+    color:var(--green);
+    text-shadow:0 0 18px rgba(70,255,160,.5), 0 0 2px rgba(70,255,160,.8);
+  }
+  .hero h1 small{ display:block; font-size:.32em; letter-spacing:.3em; color:var(--white-ish); text-shadow:none; margin-top:.3em; }
+
+  .hero-typed{
+    margin:1.9rem auto 0; max-width:50em;
+    color:var(--green-soft); font-size:1.02rem; min-height:1.6em;
+  }
+  .cursor{ display:inline-block; width:.55em; background:var(--green); margin-left:2px; box-shadow:var(--glow); animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .hero-meta{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem 1rem;
+    margin-top:2.2rem; font-size:12.5px; color:var(--green-dim);
+  }
+  .hero-meta span{ border:1px solid var(--border); padding:.3rem .7rem; border-radius:2px; background:var(--bg-inset); }
+  .hero-meta span b{ color:var(--green-soft); font-weight:600; }
+
+  .scroll-cue{ display:inline-block; margin-top:2.6rem; font-size:12px; color:var(--green-dim); border:none; }
+  .scroll-cue:hover{ color:var(--green); border:none; }
+
+  .layout{ display:grid; grid-template-columns:230px 1fr; gap:0; align-items:start; }
+
+  .sidenav{
+    position:sticky; top:52px; align-self:start;
+    padding:2.4rem 1.2rem 2rem 1.5rem;
+    border-right:1px solid var(--border-dim);
+    height:calc(100vh - 52px); overflow-y:auto;
+  }
+  .nav-prompt{ color:var(--green-dim); font-size:12px; margin-bottom:1rem; white-space:pre-line; }
+  .sidenav ul{ list-style:none; margin:0; padding:0; }
+  .sidenav li{ margin:0; }
+  .sidenav a{
+    display:block; padding:.32rem 0; border:none; font-size:13px;
+    color:var(--green-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    border-left:2px solid transparent; padding-left:.7rem; margin-left:-.7rem;
+  }
+  .sidenav a:before{ content:"· "; }
+  .sidenav a:hover{ color:var(--green); border-color:var(--border); }
+  .sidenav a.active{ color:var(--green); border-left-color:var(--green); text-shadow:var(--glow); }
+
+  .content{ padding:3rem clamp(1.25rem, 4vw, 3.5rem) 0; min-width:0; }
+
+  .block{ margin-bottom:4rem; scroll-margin-top:70px; min-width:0; }
+  .prompt-header{
+    font-size:13px; color:var(--green-dim); margin-bottom:1.1rem; white-space:pre-line;
+  }
+  .prompt-header .cmd{ color:var(--white-ish); }
+
+  .block h2{
+    font-family:var(--font-display); font-weight:400; letter-spacing:.02em;
+    font-size:2rem; margin:0 0 1.1rem; color:var(--white-ish);
+    display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap;
+  }
+  .block h2 .act{ color:var(--green); font-size:.55em; letter-spacing:.18em; }
+  .block h2 .cat{ font-size:.5em; color:var(--green-dim); border:1px solid var(--border); padding:.2em .6em; border-radius:3px; letter-spacing:.1em; text-transform:uppercase; }
+
+  .block-body p{ margin:0 0 1.1rem; color:var(--green-soft); }
+  .block-body p:last-child{ margin-bottom:0; }
+  .block-body strong{ color:var(--white-ish); font-weight:600; }
+  .block-body code{ background:var(--bg-inset-2); color:var(--amber); padding:.1em .35em; border-radius:3px; font-size:.92em; }
+
+  pre{
+    margin:1rem 0 1.4rem; padding:1rem 1.15rem; overflow-x:auto;
+    background:var(--bg-inset); border:1px solid var(--border-dim); border-left:3px solid var(--border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--green-soft);
+  }
+  pre.cmd{ border-left-color:var(--green); }
+  pre code{ background:none; padding:0; color:inherit; }
+  .ok{ color:var(--green); text-shadow:var(--glow); }
+  .fail{ color:var(--red); }
+  .warn{ color:var(--amber); }
+  .dim{ color:var(--green-dim); }
+
+  .table-wrap{ overflow-x:auto; margin:1.2rem 0 1.6rem; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:560px; }
+  th,td{ text-align:left; padding:.5rem .8rem; border:1px solid var(--border-dim); }
+  th{ color:var(--green); font-weight:600; background:var(--bg-inset); white-space:nowrap; }
+
+  .callout{
+    border:1px solid var(--border); border-left:3px solid var(--amber);
+    background:var(--bg-inset); padding:.9rem 1.1rem; margin:1rem 0 1.6rem; border-radius:4px;
+  }
+  .callout p{ margin:0; }
+  .callout .label{ color:var(--amber); font-weight:600; }
+  .callout.danger{ border-left-color:var(--red); }
+  .callout.danger .label{ color:var(--red); }
+  .callout.ok{ border-left-color:var(--green); }
+  .callout.ok .label{ color:var(--green); }
+
+  .finding-block{
+    margin:1.4rem 0; padding:1.1rem 1.2rem;
+    border:1px solid var(--border); border-radius:6px; background:var(--bg-inset-2);
+  }
+  .finding-block.blocked{ border-color:var(--red); }
+  .finding-block.open{ border-color:var(--amber); }
+  .finding-block .label{ font-size:11px; letter-spacing:.25em; margin-bottom:.5rem; text-transform:uppercase; }
+  .finding-block.confirmed .label{ color:var(--green); }
+  .finding-block.blocked .label{ color:var(--red); }
+  .finding-block.open .label{ color:var(--amber); }
+  .finding-block code{ font-size:.95rem; background:none; padding:0; word-break:break-all; color:var(--white-ish); }
+
+  .status-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.6rem; margin:1.2rem 0 1.6rem; }
+  .status-chip{ border:1px solid var(--border-dim); border-radius:4px; padding:.55rem .7rem; font-size:12px; background:var(--bg-inset); }
+  .status-chip.done{ border-color:var(--green); }
+  .status-chip.done .pts{ color:var(--green); }
+  .status-chip.blocked{ border-color:var(--red); }
+  .status-chip.blocked .pts{ color:var(--red); }
+  .status-chip.open{ border-color:var(--amber); opacity:.9; }
+  .status-chip.open .pts{ color:var(--amber); }
+  .status-chip .name{ display:block; color:var(--white-ish); font-weight:600; margin-bottom:.2rem; }
+  .status-chip .pts{ font-size:11px; }
+
+  .arsenal pre{ font-size:13px; }
+  .arsenal .perm{ color:var(--green-dim); }
+  .arsenal .name{ color:var(--green); }
+  .arsenal .desc{ color:var(--green-soft); }
+
+  .takeaways ul{ list-style:none; margin:0; padding:0; }
+  .takeaways li{
+    padding:.9rem 1rem .9rem 2.3rem; margin-bottom:.8rem; position:relative;
+    border:1px solid var(--border-dim); border-left:3px solid var(--amber); border-radius:4px;
+    background:var(--bg-inset);
+  }
+  .takeaways li::before{ content:"[!]"; position:absolute; left:.8rem; color:var(--amber); font-weight:600; }
+  .takeaways strong{ color:var(--white-ish); }
+
+  .term-footer{
+    margin-top:1rem; padding:3rem clamp(1.25rem,4vw,3.5rem) calc(1rem + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--border-dim);
+  }
+  .term-footer p{ color:var(--green-dim); font-size:13px; }
+  .term-footer .prompt-header{ margin-bottom:.6rem; }
+
+  @media (max-width:900px){
+    .layout{ grid-template-columns:1fr; }
+    .sidenav{
+      position:static; height:auto; border-right:none; border-bottom:1px solid var(--border-dim);
+      padding:1rem 1.25rem;
+    }
+    .nav-prompt{ display:none; }
+    .sidenav ul{ display:flex; gap:1rem; overflow-x:auto; padding-bottom:.3rem; }
+    .sidenav a{ padding-left:0; margin-left:0; border-left:none; border-bottom:2px solid transparent; }
+    .sidenav a.active{ border-left:none; border-bottom-color:var(--green); }
+    .content{ padding-top:2rem; }
+  }
+</style>
+</head>
+<body class="flicker">
+<div class="crt-overlay" aria-hidden="true"></div>
+
+<div class="terminal-shell">
+
+  <header class="term-titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <a href="../index.html" style="border:none;color:var(--green-dim);flex-shrink:0;">&larr; ./home</a>
+    <div class="term-path">root@app-server:~#</div>
+    <div class="term-status"><span class="dot-live" aria-hidden="true"></span> SESSION CLOSED</div>
+  </header>
+
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">full compromise chain · engagement log</p>
+    <div class="hero-frame">
+      <h1>OPERATION<br>SYNC_USER<small>web foothold → root → domain admin</small></h1>
+    </div>
+    <p class="hero-typed" id="heroTyped" aria-live="polite"></p>
+    <div class="hero-meta">
+      <span>ENTRY <b>unauthenticated SSRF/LFI proxy</b></span>
+      <span>HOST <b>Ubuntu 24.04, Dockerised</b></span>
+      <span>DOMAIN <b>internal AD forest</b></span>
+      <span>DC <b>Windows Server 2022</b></span>
+      <span>RESULT <b style="color:var(--amber)">DOMAIN COMPROMISED</b></span>
+    </div>
+    <a class="scroll-cue" href="#tldr">▼ scroll to begin</a>
+  </section>
+
+  <div class="layout">
+    <nav class="sidenav" aria-label="Section navigation">
+      <div class="nav-prompt">┌──(reader@you)-[~]
+└─$ ls -la sections/</div>
+      <ul id="navList">
+        <li><a href="#tldr">00_tldr.md</a></li>
+        <li><a href="#scope">00_scope.cfg</a></li>
+        <li><a href="#foothold">01_foothold.sh</a></li>
+        <li><a href="#privesc">02_privesc.sh</a></li>
+        <li><a href="#secrets">03_secrets.sh</a></li>
+        <li><a href="#pivot">04_pivot.sh</a></li>
+        <li><a href="#filemanager">05_filemanager.sh</a></li>
+        <li><a href="#dcsync">06_dcsync.sh</a></li>
+        <li><a href="#objective">07_objective.sh</a></li>
+        <li><a href="#board">status.txt</a></li>
+        <li><a href="#arsenal">arsenal/</a></li>
+        <li><a href="#takeaways">takeaways.md</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <section id="tldr" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 00_tldr.md</span></div>
+        <h2><span class="act">// 00</span>tl;dr</h2>
+        <div class="block-body">
+          <p>A single unauthenticated SSRF/LFI utility on a Linux host was the entire opening — reading <code>/etc/passwd</code> through it surfaced a login password someone had hidden in a user's GECOS field. From there: a one-line <code>sudo -l</code> misconfig (GTFOBins' favorite, <code>vi</code>) gave root in seconds. Root exposed a running container's credentials and, more usefully, a publicly-served "dummy" CSS asset that was never meant to ship with real-looking secrets in its comments. A system log then handed over a second internal host, reachable only once pivoted — which turned out to be running a fully exposed web file manager leaking a plaintext credential for an Active-Directory sync account.</p>
+          <p>That sync account's name and stated purpose ("password synchronization between on-prem AD and cloud services") strongly resembled an Azure AD Connect-style service identity — and sure enough, it had been granted <code>Replicating Directory Changes All</code>. One <code>secretsdump</code> call later: every NTLM hash in the domain, including a Domain Admin. Pass-the-hash onto the DC, and a target file someone thought they'd hidden by simply renaming its extension turned up anyway — Windows "Recent" shortcuts don't forget a file's original name.</p>
+        </div>
+      </section>
+
+      <section id="scope" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 00_scope.cfg</span></div>
+        <h2><span class="act">// 00</span>target inventory</h2>
+        <div class="table-wrap">
+        <table>
+          <tr><th>role</th><th>os</th><th>notes</th></tr>
+          <tr><td>initial access host</td><td>Ubuntu 24.04 (Docker host)</td><td>SSRF/LFI proxy + a monitoring web app, both containerized</td></tr>
+          <tr><td>second internal host</td><td>Ubuntu, Apache + PHP 8.3 + MySQL</td><td>only reachable after the first pivot; found via a system log, not direct scanning</td></tr>
+          <tr><td>domain controller</td><td>Windows Server 2022</td><td>reachable directly once the AD sync credential was in hand</td></tr>
+        </table>
+        </div>
+        <div class="callout">
+          <p><span class="label">[!] note</span> — the range had clearly been used before: leftover recon tooling, LDAP scripts with a hardcoded bind credential, and even pre-built root shells were still sitting on disk from an earlier session. Treated as a leg-up, not a vulnerability — but worth flagging that nothing here was freshly discovered from a clean box.</p>
+        </div>
+      </section>
+
+      <section id="foothold" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 01_foothold.sh</span></div>
+        <h2><span class="act">// 01</span>SSRF/LFI foothold <span class="cat">initial access</span></h2>
+        <div class="block-body"><p>A full port scan of the only live host in scope turned up SSH plus two unrelated web apps. One of them — a minimal Flask service — had exactly one endpoint, and it told you how to break it in its own 404 page:</p></div>
+        <pre><code>Access denied. Only the /fetch route with 'url' parameter is allowed.
+Example: /fetch?url=file:///&lt;location&gt;, To access host files go with 'hostfs' path</code></pre>
+        <div class="block-body"><p>The app runs in a container with the real host filesystem bind-mounted at <code>/hostfs</code>. Any file on the host is one request away:</p></div>
+        <pre class="cmd"><code>$ curl 'http://&lt;target&gt;:23100/fetch?url=file:///hostfs/etc/passwd'</code></pre>
+        <pre><code>app-admin:x:1000:1000:<span class="warn">&lt;redacted-password&gt;</span>:/home/app-admin:/bin/bash</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">confirmed</div>
+          <code>GECOS field repurposed as a password store → direct SSH login as app-admin</code>
+        </div>
+        <div class="callout danger">
+          <p><span class="label">[!] root cause</span> — an SSRF/debug proxy with no auth and a host bind-mount is a full host-file-read primitive, full stop. The intended use (letting a monitoring container peek at host metrics) doesn't need unrestricted <code>file://</code> + arbitrary <code>http(s)://</code> fetch.</p>
+        </div>
+      </section>
+
+      <section id="privesc" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 02_privesc.sh</span></div>
+        <h2><span class="act">// 02</span>GTFOBins root <span class="cat">privesc</span></h2>
+        <div class="block-body"><p><code>sudo -l</code> as the newly-landed user listed exactly one allowed command:</p></div>
+        <pre><code>User app-admin may run the following commands on app-server:
+    (ALL) /usr/bin/vi</code></pre>
+        <div class="block-body"><p><code>vi</code> is <a href="https://gtfobins.github.io/gtfobins/vi/" target="_blank" rel="noopener">GTFOBins 101</a> — shelling out from inside it runs as the sudo target:</p></div>
+        <pre class="cmd"><code>$ sudo /usr/bin/vi -c ':!/bin/bash'</code></pre>
+        <div class="block-body"><p>For scripted, non-interactive root execution (handy for automating the rest of this), a one-shot variant works just as well without ever dropping into an interactive shell:</p></div>
+        <pre class="cmd"><code>$ sudo /usr/bin/vi -c ':!&lt;command&gt;' -c ':q!' /dev/null</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">confirmed</div>
+          <code>root, two commands after landing the foothold</code>
+        </div>
+      </section>
+
+      <section id="secrets" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 03_secrets.sh</span></div>
+        <h2><span class="act">// 03</span>credential harvesting <span class="cat">loot</span></h2>
+        <div class="block-body"><p>Root revealed the box was itself a Docker host running the two web apps found earlier, plus a self-hosted monitoring/alerting dashboard (health checks, resource thresholds, chat-notification plugins). Its running container's env vars had its admin credentials sitting in plain sight:</p></div>
+        <pre class="cmd"><code>$ docker inspect &lt;monitoring_container&gt; | grep -A5 '"Env"'</code></pre>
+        <pre><code>ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<span class="warn">&lt;redacted&gt;</span></code></pre>
+        <div class="block-body"><p>More interesting: the same app served a completely unauthenticated static file — <code>dummy.css</code> — evidently meant as a "never actually do this" example that nobody ever pulled before it shipped:</p></div>
+        <pre><code>/* WARNING: This is a dummy CSS file with fake credentials - DO NOT USE IN PRODUCTION! */
+#password::placeholder { content: "..."; } /* Change to <span class="warn">&lt;redacted&gt;</span> */
+.api-key-example {
+  --aws-key: "AKIAIOSFODNN7EXAMPLE";  <span class="dim">← AWS's own public placeholder, planted here as a find</span>
+}
+.db-connection {
+  --db-url: "jdbc:mysql://127.0.0.1:3306";
+  --db-user: "db_admin";
+  --db-pass: "<span class="warn">&lt;redacted&gt;</span>";
+}</code></pre>
+        <div class="finding-block open">
+          <div class="label">noted</div>
+          <code>"dummy"/"example"/"test" assets are a recurring, very real source of credential leakage — this one read like a treasure map</code>
+        </div>
+      </section>
+
+      <section id="pivot" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 04_pivot.sh</span></div>
+        <h2><span class="act">// 04</span>pivot discovery <span class="cat">lateral movement</span></h2>
+        <div class="block-body"><p><code>auth.log</code> on the foothold box showed a second, previously-unseen internal IP repeatedly SSH-ing in as the same low-priv user — an automated health check from a host nothing had scanned yet. A TCP connect scan of it (SYN scans were oddly filtered over the VPN path; plain connect scans worked fine) turned up:</p></div>
+        <pre><code>80/tcp   open  http   Apache 2.4.x, PHP 8.3, MySQL backend (local-only)
+4369/tcp open  epmd   Erlang port mapper — a CouchDB/Erlang node</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">confirmed</div>
+          <code>/var/log/auth.log → the only path to discovering the second host existed at all</code>
+        </div>
+      </section>
+
+      <section id="filemanager" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 05_filemanager.sh</span></div>
+        <h2><span class="act">// 05</span>exposed file manager <span class="cat">credential leak</span></h2>
+        <div class="block-body"><p>Directory brute-forcing the new host's web root found nothing beyond the Apache default page and a stray <code>info.php</code> — but a hidden HTML comment on that very default page was a direct hint, left in by whoever built the box:</p></div>
+        <pre><code>&lt;!-- Access /elfinder to check the system files --&gt;</code></pre>
+        <div class="block-body"><p><code>/elfinder</code> turned out to be a fully exposed install of the <a href="https://github.com/Studio-42/elFinder" target="_blank" rel="noopener">elFinder</a> web file manager with directory listing enabled, serving a <code>files/</code> folder with a short text note describing an AD/Azure-AD-Connect-style sync account — plaintext credential included:</p></div>
+        <pre><code>#Active Directory Sync Service Credentials:
+Service Account: sync_user@&lt;domain&gt;
+Password: <span class="warn">&lt;redacted&gt;</span></code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">confirmed</div>
+          <code>an exposed demo file manager handed over a live domain credential</code>
+        </div>
+      </section>
+
+      <section id="dcsync" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 06_dcsync.sh</span></div>
+        <h2><span class="act">// 06</span>DCSync <span class="cat">domain compromise</span></h2>
+        <div class="block-body"><p>That exact credential had already surfaced once — hardcoded in a leftover LDAP test script on the first box, used for a quick bind check. The account's name and purpose (password sync between on-prem AD and a cloud identity service) is the textbook shape of an <strong>Azure AD Connect sync account</strong> — which, in real deployments, is routinely granted <code>Replicating Directory Changes All</code> so it can sync password hashes outward. Worth testing directly, no prior DC foothold required:</p></div>
+        <pre class="cmd"><code>$ impacket-secretsdump '&lt;domain&gt;/sync_user:&lt;redacted&gt;'@&lt;dc-ip&gt; -just-dc-ntlm</code></pre>
+        <pre><code>Administrator:500:...:<span class="fail">&lt;redacted-ntlm&gt;</span>:::
+Guest:501:...:
+krbtgt:502:...:
+backupadmin:5101:...:<span class="fail">&lt;redacted-ntlm&gt;</span>:::   <span class="dim">← a second Domain Admin account</span>
+&lt;DC&gt;$:1000:...:</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">game over</div>
+          <code>full NTDS hash dump, zero interactive access to the DC — a "sync-only" account was the entire domain's blast radius</code>
+        </div>
+        <div class="callout danger">
+          <p><span class="label">[!] why this matters most</span> — every earlier step in this chain was a normal web/Linux foothold-and-privesc sequence. This one step is categorically different: a low-privilege identity that was never supposed to be interactively usable turned out to <em>be</em> Domain Admin, the moment its password leaked anywhere.</p>
+        </div>
+      </section>
+
+      <section id="objective" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat 07_objective.sh</span></div>
+        <h2><span class="act">// 07</span>reaching the objective <span class="cat">post-exploitation</span></h2>
+        <div class="block-body"><p>Administrator's hash enabled pass-the-hash execution straight onto the DC:</p></div>
+        <pre class="cmd"><code>$ impacket-wmiexec -hashes aad3b435b51404eeaad3b435b51404ee:&lt;redacted&gt; &lt;domain&gt;/Administrator@&lt;dc-ip&gt;</code></pre>
+        <div class="block-body"><p>A filesystem search for the target file by name came up empty — but turned up something better: several Windows <code>.lnk</code> "recent file" shortcuts still carrying its original filename, plus a same-named file with a different extension sitting on the Administrator's desktop. Windows shortcuts embed their original target path even after a rename — reading one confirmed the file's true name and current location in a single step:</p></div>
+        <pre><code>C:\Users\Administrator\Recent\&lt;target-file&gt;.lnk  →  C:\Users\Administrator\Desktop\&lt;target-file&gt;.txt</code></pre>
+        <div class="finding-block confirmed">
+          <div class="label">objective complete</div>
+          <code>the file had simply been renamed, not moved, not deleted — read it directly off the DC</code>
+        </div>
+      </section>
+
+      <section id="board" class="block">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat status.txt</span></div>
+        <h2>status board</h2>
+        <div class="status-grid">
+          <div class="status-chip done"><span class="name">SSRF/LFI foothold</span><span class="pts">file:// + hostfs bind mount</span></div>
+          <div class="status-chip done"><span class="name">Root escalation</span><span class="pts">GTFOBins · vi</span></div>
+          <div class="status-chip done"><span class="name">Credential harvest</span><span class="pts">docker env + dummy.css</span></div>
+          <div class="status-chip done"><span class="name">Pivot discovery</span><span class="pts">auth.log</span></div>
+          <div class="status-chip done"><span class="name">Second host access</span><span class="pts">exposed elFinder</span></div>
+          <div class="status-chip done"><span class="name">Domain compromise</span><span class="pts">DCSync via sync_user</span></div>
+          <div class="status-chip done"><span class="name">Objective</span><span class="pts">target file retrieved</span></div>
+        </div>
+      </section>
+
+      <section id="arsenal" class="block arsenal">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">ls -la /opt/arsenal/</span></div>
+        <h2>tools used</h2>
+        <pre><code><span class="perm">-rwxr-xr-x</span>  <span class="name">nmap / masscan</span>        <span class="desc">host + port discovery, including a slow TCP connect scan where SYN was filtered</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">curl</span>                   <span class="desc">SSRF/LFI exploitation, directory probing</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">gobuster</span>               <span class="desc">web content discovery</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">docker CLI</span>            <span class="desc">container/env inspection post-root</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">smbclient / ldapsearch</span> <span class="desc">SYSVOL + AD enumeration</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">impacket-secretsdump</span>  <span class="desc">DCSync — full NTDS hash dump</span>
+<span class="perm">-rwxr-xr-x</span>  <span class="name">impacket-wmiexec</span>      <span class="desc">pass-the-hash command execution</span></code></pre>
+      </section>
+
+      <section id="takeaways" class="block takeaways">
+        <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cmd">cat takeaways.md</span></div>
+        <h2>key takeaways</h2>
+        <ul>
+          <li><strong>Debug/SSRF utilities with a host filesystem bind-mount are full host compromises.</strong> If a container genuinely needs host file access, scope and authenticate it — never leave it as an open <code>url=</code> parameter.</li>
+          <li><strong>GECOS fields are not a secret store.</strong> If it's in <code>/etc/passwd</code>, assume it's already public.</li>
+          <li><strong>Audit <code>sudo -l</code> output religiously.</strong> One GTFOBins-listed binary in the allow-list is root, full stop.</li>
+          <li><strong>"Dummy"/"example"/"test" files leak real secrets far more often than teams expect.</strong> Treat them like production config, or don't ship them.</li>
+          <li><strong>Service accounts with replication rights are Domain Admin equivalent.</strong> Any identity holding <code>Replicating Directory Changes [All]</code> should be audited and alerted on — sync tooling needs that right on the DC side, not a reusable, phishable password.</li>
+          <li><strong>Renaming a sensitive file doesn't hide it from an attacker with filesystem access.</strong> Shortcut and recent-file artifacts routinely betray a file's original name and path.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="term-footer">
+    <div class="prompt-header">┌──(operator@kali)-[~/writeup]
+└─$ <span class="cursor">▌</span></div>
+    <p>Secrets, hashes and passwords above are redacted — the range is long-lived and reused by other practitioners, so live credentials aren't reproduced even though this one's done. Found something I should add or clarify? Open an issue or drop a comment.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var el = document.getElementById('heroTyped');
+  var full = "An unauthenticated SSRF proxy, a hidden password, and a sync account nobody thought to lock down — full chain from web foothold to Domain Admin.";
+  if (reduce){
+    el.textContent = full;
+  } else {
+    var i = 0;
+    el.innerHTML = '<span class="cursor">▌</span>';
+    function type(){
+      if (i <= full.length){
+        el.innerHTML = full.slice(0, i) + '<span class="cursor">▌</span>';
+        i++;
+        setTimeout(type, 18);
+      }
+    }
+    setTimeout(type, 500);
+  }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navList a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length){
+    var map = {};
+    sections.forEach(function(s, idx){ map[s.id] = links[idx]; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = map[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+
+</body></html>

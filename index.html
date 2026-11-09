@@ -305,6 +305,24 @@
           <article class="post-row">
             <div class="post-badge">AD</div>
             <div class="post-main">
+              <h3><a href="writeups/operation-syncuser.html">Operation Sync_User: Web Foothold to Domain Admin</a></h3>
+              <p class="post-excerpt">An unauthenticated SSRF/LFI proxy chained into a GTFOBins root escalation, credentials leaked through a "dummy" asset that shipped to production, a pivot discovered through a system log, an exposed web file manager leaking an AD sync-account credential, and that account turning out to hold DCSync rights — full domain compromise and the objective retrieved.</p>
+              <div class="post-meta">
+                <span><i class="fa-regular fa-calendar"></i> Nov 9, 2026</span>
+                <span class="status-done"><i class="fa-solid fa-circle-check"></i> completed</span>
+              </div>
+              <div class="post-tags">
+                <a href="#tags">active-directory</a>
+                <a href="#tags">ssrf</a>
+                <a href="#tags">privilege-escalation</a>
+                <a href="#tags">dcsync</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="post-row">
+            <div class="post-badge">AD</div>
+            <div class="post-main">
               <h3><a href="writeups/nncsc-range.html">NNCSC Range: Pre-AD Recon Log</a></h3>
               <p class="post-excerpt">An unauthenticated recon pass across four domain controllers in the NNCSC range: SMB null sessions that open but a RID brute that doesn't, Kerberos pre-auth username enumeration, a password-spray plan deliberately held back over lockout risk, an anonymous LDAP bind closed off mid-ADCS check, and a coercion-plus-relay path queued as the next move.</p>
               <div class="post-meta">
@@ -666,6 +684,7 @@
           <div class="widget">
             <h3>Recent</h3>
             <ul>
+              <li><a href="writeups/operation-syncuser.html">Operation Sync_User</a><span class="wdate">Nov 9, 2026 &middot; completed</span></li>
               <li><a href="writeups/nncsc-range.html">NNCSC Range</a><span class="wdate">Oct 3, 2026 &middot; completed</span></li>
               <li><a href="writeups/nustctf-2026.html">NustCTF 2026</a><span class="wdate">Sep 13, 2026</span></li>
               <li><a href="writeups/operation-endgames.html">Operation EndGames</a><span class="wdate">Jun 20, 2026</span></li>
